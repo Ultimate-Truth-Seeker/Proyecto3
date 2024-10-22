@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <time.h>
 #include <ctime>
+#include <unistd.h>
+
 
 // Tamaño de la ventana
 const int WINDOW_WIDTH = 800;
@@ -51,8 +53,12 @@ int puntaje = 0;
 
 
 // Mutex para sincronización
-pthread_mutex_t lock;
 
+pthread_mutex_t mutexAsteroides;
+pthread_mutex_t mutexProyectiles1;
+pthread_mutex_t mutexProyectiles2;
+pthread_mutex_t mutexNave1;
+pthread_mutex_t mutexNave2;
 // Función para calcular la distancia entre dos objetos
 double calcularDistancia(int x1, int y1, int x2, int y2) {
     return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
@@ -174,6 +180,9 @@ void manejarColisionNaveConAsteroide(Nave* nave, Asteroide* asteroide) {
 
 // Función para actualizar los asteroides
 void actualizarAsteroides() {
+    pthread_mutex_lock(&mutexAsteroides);
+    pthread_mutex_lock(&mutexNave1);
+    pthread_mutex_lock(&mutexNave2);
     for (int i = 0; i < numAsteroides; i++) {
         if (asteroides[i].isActive) {
             // Mover los asteroides
@@ -190,12 +199,39 @@ void actualizarAsteroides() {
 
             // Verificar colisiones con la nave
             manejarColisionNaveConAsteroide(nave, &asteroides[i]);
-            if ()
+
         }
     }
+    pthread_mutex_unlock(&mutexNave2);
+    pthread_mutex_unlock(&mutexNave1);
+    pthread_mutex_unlock(&mutexAsteroides);
 }
 
+
+void* hiloNave1Func(void* arg) {
+    while (juegoActivo) {
+        pthread_mutex_lock(&mutexNave1);
+        moverNave(naveShape);
+        verificarLimitesNave();
+        pthread_mutex_unlock(&mutexNave1);
+        usleep(16000); // Aproximadamente 60 FPS
+    }
+    return NULL;
+}
+void* hiloAsteroidesFunc(void* arg) {
+    while (juegoActivo) {
+        pthread_mutex_lock(&mutexAsteroides);
+        actualizarAsteroides();
+        pthread_mutex_unlock(&mutexAsteroides);
+        usleep(16000);
+    }
+    return NULL;
+}
+
+
 void actualizarProyectiles() {
+    pthread_mutex_lock(&mutexAsteroides);
+    pthread_mutex_lock(&mutexProyectiles1);
     for (int i = 0; i < 10; i++) {
         if (proyectiles[i].isActive) {
             // Mover el proyectil
@@ -215,9 +251,13 @@ void actualizarProyectiles() {
             }
         }
     }
+    pthread_mutex_unlock(&mutexProyectiles1);
+    pthread_mutex_unlock(&mutexAsteroides);
 }
 
 void actualizarProyectilesNave2() {
+    pthread_mutex_lock(&mutexAsteroides);
+    pthread_mutex_lock(&mutexProyectiles2);
     for (int i = 0; i < 10; i++) {
         if (proyectiles2[i].isActive) {
             // Mover el proyectil
@@ -237,6 +277,8 @@ void actualizarProyectilesNave2() {
             }
         }
     }
+    pthread_mutex_unlock(&mutexProyectiles2);
+    pthread_mutex_unlock(&mutexAsteroides);
 }
 
 // Función para dibujar los asteroides
@@ -249,6 +291,25 @@ void dibujarAsteroides(sf::RenderWindow& window) {
             window.draw(asteroideShape);
         }
     }
+}
+
+void* hiloProyectiles1Func(void* arg) {
+    while (juegoActivo) {
+        pthread_mutex_lock(&mutexProyectiles1);
+        actualizarProyectiles();
+        pthread_mutex_unlock(&mutexProyectiles1);
+        usleep(16000);
+    }
+    return NULL;
+}
+void* hiloProyectiles2Func(void* arg) {
+    while (juegoActivo) {
+        pthread_mutex_lock(&mutexProyectiles2);
+        actualizarProyectilesNave2();
+        pthread_mutex_unlock(&mutexProyectiles2);
+        usleep(16000);
+    }
+    return NULL;
 }
 
 // Función para dibujar los proyectiles
@@ -407,6 +468,9 @@ void ejecutarJuegoUnJugador(sf::RenderWindow& window) {
         textoPuntaje.setString("Puntaje: " + std::to_string(puntaje));
         textoVidas.setString("Vidas: " + std::to_string(nave->vidas));
 
+        pthread_mutex_lock(&mutexAsteroides);
+        pthread_mutex_lock(&mutexProyectiles1);
+        pthread_mutex_lock(&mutexNave1);
         // Limpiar la ventana
         window.clear(sf::Color::Black);
         
@@ -424,6 +488,10 @@ void ejecutarJuegoUnJugador(sf::RenderWindow& window) {
         dibujarAsteroides(window);
         dibujarProyectiles(window);
         window.draw(naveShape);
+
+        pthread_mutex_unlock(&mutexNave1);
+        pthread_mutex_unlock(&mutexProyectiles1);
+        pthread_mutex_unlock(&mutexAsteroides);
 
         // Mostrar la ventana
         window.display();
@@ -507,6 +575,12 @@ void ejecutarJuegoDosJugadores(sf::RenderWindow& window) {
         textoPuntaje.setString("Puntaje: " + std::to_string(puntaje));
         textoVidas.setString("Vidas 1: " + std::to_string(nave->vidas));
         textoVidas2.setString("Vidas 2: " + std::to_string(nave2->vidas));
+        
+        pthread_mutex_lock(&mutexAsteroides);
+        pthread_mutex_lock(&mutexProyectiles1);
+        pthread_mutex_lock(&mutexNave1);
+        pthread_mutex_lock(&mutexNave2);
+
         // Limpiar la ventana
         window.clear(sf::Color::Black);
         window.draw(textoPuntaje);
@@ -533,6 +607,11 @@ void ejecutarJuegoDosJugadores(sf::RenderWindow& window) {
         window.draw(naveShape);
         window.draw(nave2Shape);
 
+        pthread_mutex_unlock(&mutexNave1);
+        pthread_mutex_unlock(&mutexNave2);
+        pthread_mutex_unlock(&mutexProyectiles1);
+        pthread_mutex_unlock(&mutexAsteroides);
+
         // Mostrar la ventana
         window.display();
         if (!quedanAsteroides()) {
@@ -543,7 +622,7 @@ void ejecutarJuegoDosJugadores(sf::RenderWindow& window) {
             window.display();
             juegoActivo = false;  // Terminar el juego
         }
-        if (nave->vidas <= 0 && nave2->vidas <= 0) {
+        if (nave->vidas <= 0 || nave2->vidas <= 0) {
             // Mostrar mensaje de derrota (opcional)
             
 
