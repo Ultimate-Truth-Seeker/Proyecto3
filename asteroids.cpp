@@ -46,6 +46,7 @@ Proyectil proyectiles[10];
 Proyectil proyectiles2[10];
 int numAsteroides = 3;
 int numProyectiles = 0;
+int puntaje = 0;
 
 
 // Mutex para sincronización
@@ -152,6 +153,9 @@ void manejarColisionProyectilConAsteroide(Proyectil* proyectil, Asteroide* aster
                 asteroides[numAsteroides].isActive = 1;
                 numAsteroides++;
             }
+        } else if (asteroide->size == 1) {
+            // Incrementar el puntaje al destruir un asteroide pequeño
+            puntaje += 10;
         }
     }
 }
@@ -246,7 +250,7 @@ void dibujarAsteroides(sf::RenderWindow& window) {
 
 // Función para dibujar los proyectiles
 void dibujarProyectiles(sf::RenderWindow& window) {
-    for (int i = 0; i < numProyectiles; i++) {
+    for (int i = 0; i < 10; i++) {
         if (proyectiles[i].isActive) {
             sf::RectangleShape proyectilShape(sf::Vector2f(5, 10));
             proyectilShape.setPosition(proyectiles[i].x, proyectiles[i].y);
@@ -257,7 +261,7 @@ void dibujarProyectiles(sf::RenderWindow& window) {
 }
 
 void dibujarProyectilesNave2(sf::RenderWindow& window) {
-    for (int i = 0; i < numProyectiles; i++) {
+    for (int i = 0; i < 10; i++) {
         if (proyectiles2[i].isActive) {
             sf::RectangleShape proyectilShape(sf::Vector2f(5, 10));
             proyectilShape.setPosition(proyectiles2[i].x, proyectiles2[i].y);
@@ -324,8 +328,6 @@ sf::Font font;  // Fuente para el texto del menú
 sf::Text menuOptions[3];  // Opciones del menú
 int selectedOption = 0;  // Opción seleccionada
 
-// Cargar la fuente
-
 
 
 void mostrarInstrucciones(sf::RenderWindow& window) {
@@ -356,6 +358,7 @@ void mostrarInstrucciones(sf::RenderWindow& window) {
 
 void ejecutarJuegoUnJugador(sf::RenderWindow& window) {
     // Configura la nave, los asteroides y otros elementos como en tu `main` anterior
+    numAsteroides = 3;
     juegoActivo = true;  // Restablecer 'juegoActivo' al iniciar el juego
     nave = new Nave();   // Asignar memoria a 'nave'
     asteroides = new Asteroide[20];  // Por ejemplo, un máximo de 20 asteroides
@@ -365,6 +368,13 @@ void ejecutarJuegoUnJugador(sf::RenderWindow& window) {
     nave->y = 300;
     nave->angulo = 0;
     nave->vidas = 3;
+
+    sf::Text textoVidas;
+    sf::Text textoPuntaje;
+    textoPuntaje.setFont(font);  // Asegúrate de que la fuente está cargada
+    textoPuntaje.setCharacterSize(24);
+    textoPuntaje.setFillColor(sf::Color::White);
+    textoPuntaje.setPosition(10, 40);  // Posición en la pantalla
 
     for (int i = 0; i < numAsteroides; i++) {
         asteroides[i].x = rand() % WINDOW_WIDTH;
@@ -386,10 +396,14 @@ void ejecutarJuegoUnJugador(sf::RenderWindow& window) {
 
             manejarEntradaDisparo(event);  // Detectar disparo de un jugador
         }
+        textoPuntaje.setString("Puntaje: " + std::to_string(puntaje));
+        textoVidas.setString("Vidas: " + std::to_string(nave->vidas));
 
         // Limpiar la ventana
         window.clear(sf::Color::Black);
-
+        
+        window.draw(textoPuntaje);
+        window.draw(textoVidas);
         // Mover la nave y actualizar el juego
         moverNave(naveShape);
         verificarLimitesNave();
@@ -405,6 +419,22 @@ void ejecutarJuegoUnJugador(sf::RenderWindow& window) {
 
         // Mostrar la ventana
         window.display();
+        if (!quedanAsteroides()) {
+            // Mostrar mensaje de victoria (opcional)
+            
+
+            window.clear();
+            window.display();
+            juegoActivo = false;  // Terminar el juego
+        }
+        if (nave->vidas <= 0) {
+            // Mostrar mensaje de derrota (opcional)
+            
+
+            window.clear();
+            window.display();
+            juegoActivo = false;  // Terminar el juego
+        }
     }
     delete nave;
 
@@ -413,17 +443,18 @@ void ejecutarJuegoUnJugador(sf::RenderWindow& window) {
 
 void ejecutarJuegoDosJugadores(sf::RenderWindow& window) {
     // Configurar naves, asteroides y otros elementos
+    numAsteroides = 5;
     juegoActivo = true;
     nave = new Nave();   // Asignar memoria a 'nave'
     nave2 = new Nave();  // Asignar memoria a 'nave2'
     asteroides = new Asteroide[20];  // Por ejemplo, un máximo de 20 asteroides
 
 
-    nave->x = 400;
+    nave->x = 200;
     nave->y = 300;
     nave->angulo = 0;
     nave->vidas = 3;
-    nave2->x = 400;
+    nave2->x = 500;
     nave2->y = 300;
     nave2->angulo = 0;
     nave2->vidas = 3;
@@ -582,6 +613,8 @@ int main() {
 
     menuOptions[selectedOption].setFillColor(sf::Color::Red);  // Opción seleccionada en rojo
     // Mostrar el menú principal
+    window.setFramerateLimit(60);  // Limitar a 60 FPS
+
     mostrarMenu(window);
 
     return 0;
