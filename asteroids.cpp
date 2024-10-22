@@ -5,6 +5,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <ctime>
 
 // Tamaño de la ventana
 const int WINDOW_WIDTH = 800;
@@ -15,7 +16,7 @@ bool juegoActivo = true;
 sf::RenderWindow window(sf::VideoMode(800, 600), "Asteroids Menu");
 sf::RectangleShape naveShape(sf::Vector2f(40, 40));
 sf::RectangleShape nave2Shape(sf::Vector2f(40, 40));
-
+time_t cooldown = time(nullptr);
 
 // Estructuras de los elementos (Nave, Asteroide, Proyectil)
 typedef struct {
@@ -163,10 +164,11 @@ void manejarColisionProyectilConAsteroide(Proyectil* proyectil, Asteroide* aster
 // Colisiones entre la nave y los asteroides
 void manejarColisionNaveConAsteroide(Nave* nave, Asteroide* asteroide) {
     if (calcularDistancia(nave->x, nave->y, asteroide->x, asteroide->y) < (15 * asteroide->size)) {
-        nave->vidas--;  // Reducir una vida
-        if (nave->vidas <= 0) {
-            juegoActivo = false;  // Terminar el juego si las vidas se agotan
-        }
+        if (difftime(time(nullptr), cooldown) > 2) {
+            nave->vidas--;  // Reducir una vida
+            cooldown = time(nullptr);
+        } 
+        
     }
 }
 
@@ -188,6 +190,7 @@ void actualizarAsteroides() {
 
             // Verificar colisiones con la nave
             manejarColisionNaveConAsteroide(nave, &asteroides[i]);
+            if ()
         }
     }
 }
@@ -376,6 +379,11 @@ void ejecutarJuegoUnJugador(sf::RenderWindow& window) {
     textoPuntaje.setFillColor(sf::Color::White);
     textoPuntaje.setPosition(10, 40);  // Posición en la pantalla
 
+    textoVidas.setFont(font);  // Asegúrate de que la fuente está cargada
+    textoVidas.setCharacterSize(24);
+    textoVidas.setFillColor(sf::Color::White);
+    textoVidas.setPosition(10, 70);  // Posición en la pantalla
+
     for (int i = 0; i < numAsteroides; i++) {
         asteroides[i].x = rand() % WINDOW_WIDTH;
         asteroides[i].y = rand() % WINDOW_HEIGHT;
@@ -449,6 +457,22 @@ void ejecutarJuegoDosJugadores(sf::RenderWindow& window) {
     nave2 = new Nave();  // Asignar memoria a 'nave2'
     asteroides = new Asteroide[20];  // Por ejemplo, un máximo de 20 asteroides
 
+    sf::Text textoVidas;
+    sf::Text textoVidas2;
+    sf::Text textoPuntaje;
+    textoPuntaje.setFont(font);  // Asegúrate de que la fuente está cargada
+    textoPuntaje.setCharacterSize(24);
+    textoPuntaje.setFillColor(sf::Color::White);
+    textoPuntaje.setPosition(10, 40);  // Posición en la pantalla
+
+    textoVidas.setFont(font);  // Asegúrate de que la fuente está cargada
+    textoVidas.setCharacterSize(24);
+    textoVidas.setFillColor(sf::Color::White);
+    textoVidas.setPosition(10, 70);  // Posición en la pantalla
+    textoVidas2.setFont(font);  // Asegúrate de que la fuente está cargada
+    textoVidas2.setCharacterSize(24);
+    textoVidas2.setFillColor(sf::Color::White);
+    textoVidas2.setPosition(10, 100);  // Posición en la pantalla
 
     nave->x = 200;
     nave->y = 300;
@@ -480,8 +504,14 @@ void ejecutarJuegoDosJugadores(sf::RenderWindow& window) {
             manejarEntradaDisparoNave2(event);  // Disparo para el jugador 2
         }
 
+        textoPuntaje.setString("Puntaje: " + std::to_string(puntaje));
+        textoVidas.setString("Vidas 1: " + std::to_string(nave->vidas));
+        textoVidas2.setString("Vidas 2: " + std::to_string(nave2->vidas));
         // Limpiar la ventana
         window.clear(sf::Color::Black);
+        window.draw(textoPuntaje);
+        window.draw(textoVidas);
+        window.draw(textoVidas2);
 
         // Mover y rotar la nave 1
         moverNave(naveShape);
@@ -505,6 +535,22 @@ void ejecutarJuegoDosJugadores(sf::RenderWindow& window) {
 
         // Mostrar la ventana
         window.display();
+        if (!quedanAsteroides()) {
+            // Mostrar mensaje de victoria (opcional)
+            
+
+            window.clear();
+            window.display();
+            juegoActivo = false;  // Terminar el juego
+        }
+        if (nave->vidas <= 0 && nave2->vidas <= 0) {
+            // Mostrar mensaje de derrota (opcional)
+            
+
+            window.clear();
+            window.display();
+            juegoActivo = false;  // Terminar el juego
+        }
     }
     delete nave;
     delete nave2;
